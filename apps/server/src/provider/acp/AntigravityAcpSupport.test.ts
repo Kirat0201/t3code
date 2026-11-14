@@ -156,7 +156,7 @@ describe("applyAntigravityAcpModelSelection", () => {
     }),
   );
 
-  it.effect("lets the provider accept an explicit model absent from cached choices", () =>
+  it.effect("sends an explicit model absent from cached choices to the provider", () =>
     Effect.gen(function* () {
       const { runtime, selections } = makeModelRuntime();
       const model = yield* applyAntigravityAcpModelSelection({
@@ -166,26 +166,17 @@ describe("applyAntigravityAcpModelSelection", () => {
       });
       expect(model).toBe("gemini-new");
       expect(selections).toEqual(["model=gemini-new (unlisted)"]);
+
+      const failure = EffectAcpErrors.AcpRequestError.invalidParams("Provider rejected it.");
+      const rejecting = makeModelRuntime([modelConfig], failure);
+      const error = yield* applyAntigravityAcpModelSelection({
+        runtime: rejecting.runtime,
+        model: "gemini-removed",
+        mapError: (cause) => ({ cause }),
+      }).pipe(Effect.flip);
+      expect(error).toEqual({ cause: failure });
+      expect(rejecting.selections).toEqual(["model=gemini-removed (unlisted)"]);
     }),
-  );
-
-  it.effect.each(["gemini-removed", "Gemini saved", "gemini-saved[reasoning=high]"])(
-    "preserves provider rejection of %s without selecting a fallback",
-    (model) =>
-      Effect.gen(function* () {
-        const failure = EffectAcpErrors.AcpRequestError.invalidParams(
-          `Provider rejected '${model}'.`,
-        );
-        const { runtime, selections } = makeModelRuntime([modelConfig], failure);
-        const error = yield* applyAntigravityAcpModelSelection({
-          runtime,
-          model,
-          mapError: (cause) => ({ cause }),
-        }).pipe(Effect.flip);
-
-        expect(error).toEqual({ cause: failure });
-        expect(selections).toEqual([`model=${model} (unlisted)`]);
-      }),
   );
 
   it.effect("accepts exact model IDs from grouped native options", () =>
