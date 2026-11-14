@@ -277,11 +277,14 @@ export const applyAntigravityAcpModelSelection = Effect.fn("applyAntigravityAcpM
     const legacyFamily = options.some((option) => option.value === resolved)
       ? undefined
       : legacyAntigravityFamily(configOptions, resolved);
-    if (legacyFamily !== undefined) {
+    if (
+      legacyFamily !== undefined ||
+      (explicit && !options.some((option) => option.value === resolved))
+    ) {
       yield* input.runtime
         .setConfigOption("model", resolved, { allowUnlistedValue: true })
         .pipe(Effect.mapError(input.mapError));
-      return legacyFamily;
+      return legacyFamily ?? resolved;
     }
     if (!options.some((option) => option.value === resolved)) {
       return yield* Effect.fail(
